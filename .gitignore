@@ -1,0 +1,9 @@
+# Upstream VESC firmware source tree. Cloned on demand; see firmware/README.md.
+# Not a submodule on purpose: this project is an overlay (one file + one patch),
+# so pinning a whole fork would hide how small the change actually is.
+/bldc/
+
+# Stale prebuilt image from before this repo was under version control. It was
+# built from a 60_mk6_hp target and from a source revision that no longer
+# exists, so it cannot be reproduced or verified. Build from source instead.
+/vesc_elrs_60_mk6_hp_fw6.06.bin
