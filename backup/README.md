@@ -15,8 +15,10 @@ not as a starting configuration.
 |---|---|---|
 | `nuc4_20261023/` | `60_MK6`, UUID `58 00 33 00 0F 50 4B 4D 31 38 31 20`, `controller_id` 72 | first board; also holds the pre-edit ROS configs |
 | `local_id120_20261030/` | `60_MK6`, UUID `1B 00 36 00 18 47 31 33 38 35 32 38`, `controller_id` 120 | second board; includes the flashed image and post-apply readback |
+| `hp_id75_20261125/` | `60_MK6_HP`, UUID `3B 00 24 00 0A 47 31 33 39 32 38 30`, `controller_id` 75 | the one HP board; arrived already running an older arbiter build |
 
-Both are plain `60_MK6`, not HP.
+Two are plain `60_MK6` and one is `60_MK6_HP`, which needs a different build
+target — see [`../firmware/README.md`](../firmware/README.md).
 
 ## What the files are
 

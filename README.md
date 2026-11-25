@@ -94,10 +94,15 @@ vesc_tool --offscreen --vescPort /dev/ttyACM0 --setAppConf AppConf_arbiter.xml
 
 # 4. radio
 cp radio/vesc.lua /path/to/sdcard/SCRIPTS/TELEMETRY/
+
+# 5. check it is running, then calibrate the steering for your car
+python3 tools/vesc_term.py threads     # should list "RC Arbiter"
+python3 tools/servo_tune.py            # mode switch on AUTO
 ```
 
-Then **calibrate the steering for your car** — the committed values are for one
-specific vehicle and will not centre yours. See
+**Calibrate the steering before driving.** The committed values are
+measurements from one specific vehicle and will not centre yours. VESC Tool's
+own servo slider cannot do this on a board running the arbiter — see
 [`docs/calibration.md`](docs/calibration.md).
 
 Details and pitfalls: [`firmware/README.md`](firmware/README.md),
@@ -108,6 +113,8 @@ Details and pitfalls: [`firmware/README.md`](firmware/README.md),
 ```
 firmware/     app_arbiter.c, bldc_arbiter.patch
 radio/        vesc.lua (EdgeTX telemetry screen)
+tools/        Python scripts for identifying the board, reading arbiter state,
+              and calibrating the steering
 docs/         wiring, telemetry contract, calibration
 backup/       per-board VESC config XML, one directory per board (UUID in its README)
 prototypes/   early LispBM implementations, superseded -- kept for the notes in them

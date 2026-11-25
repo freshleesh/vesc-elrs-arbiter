@@ -1,73 +1,80 @@
 # Steering calibration
 
-**The committed values are for one specific car and will not centre yours.**
-They live in `app_arbiter.c`:
+**The committed values are measurements from one specific car and will not
+centre yours.** They live in `app_arbiter.c`:
 
 ```c
-#define STR_CENTER     0.6263f  // servo position for straight ahead
-#define SERVO_MIN      0.2526f  // left travel limit
-#define SERVO_MAX      1.0f     // right travel limit (output ceiling, 2000 us)
-#define STR_RANGE_L    (STR_CENTER - SERVO_MIN)
-#define STR_RANGE_R    (SERVO_MAX - STR_CENTER)
+#define STR_CENTER     0.3040f  // straight ahead
+#define SERVO_MIN      0.0160f  // left travel limit
+#define SERVO_MAX      0.7000f  // right travel limit
+#define STR_RANGE_L    (STR_CENTER - SERVO_MIN)  // 0.2880
+#define STR_RANGE_R    (SERVO_MAX - STR_CENTER)  // 0.3960
 ```
 
 Servo output is `0.0 .. 1.0` mapped to `1000 .. 2000 us` at 50 Hz
-(`SERVO_OUT_PULSE_MIN_US` / `MAX_US` / `SERVO_OUT_RATE_HZ` in `conf_general.h`).
+(`SERVO_OUT_PULSE_MIN_US` / `MAX_US` / `SERVO_OUT_RATE_HZ` in `conf_general.h`),
+and `pwm_servo.c` truncates anything outside `0.0 .. 1.0`.
 
 ## Why the centre is not 0.5
 
-On a real car the servo horn, the linkage and the rack all have offsets, so
-straight-ahead is wherever it happens to be. The car this was calibrated on
-centres at **0.6263** — 126 us off the servo midpoint.
+The servo horn, the linkage and the rack all have offsets, so straight-ahead is
+wherever it happens to be — never the servo midpoint. That matters because the
+offset eats one side's travel: with the centre at 0.3040 there is only 0.3040
+below it and 0.6960 above.
 
-That asymmetry matters because it eats one side's travel. With the centre at
-0.6263 the right side has only `1.0 - 0.6263 = 0.3737` before the output range
-runs out, while the left side would have `0.6263`. So each side gets its own
-gain (`STR_RANGE_L` / `STR_RANGE_R`) and full stick reaches that side's limit
-without ever exceeding it.
+So each side gets its own gain, `STR_RANGE_L` and `STR_RANGE_R`. Full stick
+reaches that side's limit and no further, in both directions, whatever the
+offset is.
 
-## Why the two sides were then made equal
+## Measure it with tools/servo_tune.py
 
-Measuring the car above, the servo reached 1.0 to the right **without hitting a
-mechanical stop** — the limit was the output ceiling, not the steering rack. The
-left side was therefore reduced from 0.4763 to 0.3737 to match, giving a
-symmetric +/-0.3737.
+```bash
+python3 tools/servo_tune.py
+```
 
-That is a deliberate loss of left-hand steering angle, for one reason: a ROS
-autonomy stack steers with a **single gain**
-(`steering_angle_to_servo_gain`) and cannot express an asymmetric range. Left
-asymmetric, the car would steer differently under the driver than under the
-computer, which makes every handling comparison meaningless.
+Arrow keys nudge the servo; `m`, `l` and `r` mark the centre and the two
+limits; `q` prints the three `#define` lines.
 
-If you do not run such a stack, keep the asymmetry and let each side use its
-full travel.
+**VESC Tool's own servo slider cannot do this job on a board running the
+arbiter.** The slider sends one command per change, and the arbiter reclaims
+the servo after `CMD_TIMEOUT_MS` (500 ms) of silence from the computer — so the
+servo snaps back to `STR_CENTER` the moment you stop dragging, which looks
+exactly like the two fighting over the output. `servo_tune.py` resends at 10 Hz,
+which keeps `cmd_fresh` true and holds position.
 
-## Procedure
+Either way the mode switch must be on **AUTO** with the RC link up, or the
+arbiter is driving and every comm command is discarded.
 
-1. Put the car on blocks with the drive wheels clear. Steering calibration
-   never commands the motor, but you are about to flash firmware.
+Procedure:
+
+1. Put the car on blocks with the drive wheels clear. Calibration never
+   commands the motor, but you are flashing firmware.
 2. Flash the arbiter and apply the configs (see [`../firmware/README.md`](../firmware/README.md)).
-3. With the mode switch on AUTO, the computer's servo commands pass through, so
-   you can sweep the servo with `COMM_SET_SERVO_POS` (id 12) packets and watch
-   the wheels. Step in 0.01 until they point straight — that value is
-   `STR_CENTER`.
-4. Keep stepping outward each way until the wheels stop moving or the linkage
-   binds. Those are `SERVO_MIN` and `SERVO_MAX`. If you reach 0.0 or 1.0 first,
-   the output range is your limit, not the car.
-5. Edit the three constants, rebuild, reflash, re-apply the configs.
-6. Check by eye that the wheels are straight at centre and that both sides
-   deflect about equally.
+3. Find straight-ahead, mark it with `m`.
+4. Step outward each way until the linkage binds or the servo starts buzzing.
+   **Buzzing means the servo is pushing against something it cannot move** — it
+   draws current and chews the gears, so back off and mark just inside it.
+5. Put the three values in `app_arbiter.c`, rebuild, reflash, re-apply configs.
+6. Check by eye that the wheels are straight at centre.
 
-Reading the arbiter's `COMM_CUSTOM_APP_DATA` stream (see
-[telemetry.md](telemetry.md)) is a quicker way to do step 3: it reports the
-servo position at 50 Hz, so you can hold the sticks where the wheels look
-straight and read the number off directly instead of guessing percentages.
+## Asymmetric or symmetric?
+
+The firmware handles an asymmetric range natively, so **if the radio is the only
+thing steering, keep it asymmetric** and use every degree the car has.
+
+Clip to symmetric only if a ROS stack will also drive the servo. ROS steers with
+a single gain (`steering_angle_to_servo_gain`) and cannot express two different
+ranges, so an asymmetric car would steer differently under the driver than under
+the computer — which makes any handling comparison meaningless.
+
+The committed car is left asymmetric (288 us left, 396 us right). To make it
+symmetric you would set `SERVO_MAX` to `0.5920` and lose 108 us of right-hand
+steering.
 
 ## If you run ROS as well
 
-In AUTO the autonomy stack drives the servo itself, so `STR_CENTER` does **not**
-apply — the stack has its own copy of the centre. Both must change together or
-manual and autonomous driving will steer differently.
+In AUTO the stack drives the servo itself, so `STR_CENTER` does **not** apply —
+the stack has its own copy of the centre. Both must change together.
 
 For an F1TENTH / `unicorn-racing-stack` style layout:
 
@@ -85,12 +92,33 @@ limit.
 
 Leave the simulation config alone — it is not describing your car.
 
-If you built with `--symlink-install`, the installed YAML files are symlinks
-into `src/`, so editing them takes effect without rebuilding.
+With `--symlink-install`, the installed YAML files are symlinks into `src/`, so
+editing them takes effect without rebuilding.
+
+## Do not widen the output pulse range to gain travel
+
+It is tempting, when a limit turns out to be the `1000 us` output floor rather
+than the car, to lower `SERVO_OUT_PULSE_MIN_US`. This was tried and reverted,
+and the reasoning is worth keeping:
+
+- It **rescales the whole `0..1` mapping**, so every calibration number —
+  firmware and ROS alike — has to be measured again.
+- `conf_general.h` is a patched file, so the patch grows a second hook.
+- It drives the servo outside its rated range, where it can buzz against its own
+  internal stops.
+- And on the car measured here it bought **16 us**. The left limit sits at
+  1016 us: the real constraint was mechanical all along, only barely past the
+  floor.
+
+Convert your marks to microseconds before concluding the output range is the
+problem. `servo_tune.py` prints both. If the limit really is the floor, the
+honest fix is mechanical — move the servo horn a tooth or adjust the linkage so
+straight-ahead sits nearer the middle of the range, which recovers travel on
+both sides and needs no firmware change at all.
 
 ## Worked examples
 
-[`../backup/`](../backup/) holds the real configs from two boards, one directory
-each, with the measured values and the reasoning in their READMEs. Board
-identity is by UUID, not by which USB port it showed up on — see
-[`../firmware/README.md`](../firmware/README.md) for how to read it.
+[`../backup/`](../backup/) holds the real configs from three boards, one
+directory each, with the measured values and the reasoning in their READMEs.
+Board identity is by UUID, not by device node — see
+[`../firmware/README.md`](../firmware/README.md).

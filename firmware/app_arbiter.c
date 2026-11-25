@@ -103,22 +103,35 @@
 #define CTRL_SW_MOMENTARY 1 // 1: SD is a push button (toggle on press), 0: latching switch (high = SPEED)
 
 // ---- tuning ----
-// Steering is calibrated per car. STR_CENTER is where this car's wheels point
-// straight; it is NOT the servo midpoint, so each side gets its own gain and
-// full stick reaches the travel limit both ways without ever exceeding it.
-// SERVO_MIN / SERVO_MAX are this car's measured travel limits (see below).
-// NOTE: ROS drives the servo itself in AUTO, so the autonomous stack has its
-// own copy of the center in stack_master/config/CAR/vehicle_config.yaml
-// (steering_angle_to_servo_offset). Change both together.
-#define STR_CENTER     0.6263f // servo position for straight ahead (measured by eye 2026-10-23)
-// Travel limits, probed by eye 2026-10-23: the servo reached 1.0 (2000 us) to
-// the right without hitting a mechanical stop, so the right side is capped by
-// the output range itself. SERVO_MIN is then set to mirror it, because the ROS
-// stack steers with a single gain and cannot express an asymmetric range.
-#define SERVO_MIN      0.2526f // = STR_CENTER - 0.3737, mirrors the right side
-#define SERVO_MAX      1.0f    // output ceiling (2000 us)
-#define STR_RANGE_L    (STR_CENTER - SERVO_MIN)  // 0.3737, stick to the left
-#define STR_RANGE_R    (SERVO_MAX - STR_CENTER)  // 0.3737, stick to the right
+// Steering is calibrated per car; these are measurements, not defaults, and
+// they will not centre a different vehicle. STR_CENTER is where this car's
+// wheels point straight -- it is NOT the servo midpoint -- so each side gets
+// its own gain and full stick reaches that side's mechanical limit without
+// ever pushing past it.
+//
+// Measured 2026-11-25 on the 60_MK6_HP board (UUID 3B 00 24 ...), servo output
+// at the stock 1000..2000 us range:
+//     centre 0.3040 = 1304 us
+//     left   0.0160 = 1016 us   ->  288 us of travel
+//     right  0.7000 = 1700 us   ->  396 us of travel
+//
+// Both limits are mechanical: the linkage binds there. The left limit sits only
+// 16 us above the 1000 us output floor, so widening the output range buys
+// essentially nothing on this car -- it was tried and reverted.
+//
+// The range is left ASYMMETRIC on purpose, because the firmware can express it
+// (STR_RANGE_L / STR_RANGE_R) and clipping would throw away 108 us of right-hand
+// steering. NOTE: a ROS stack steers with a single gain
+// (steering_angle_to_servo_gain) and CANNOT express this, so if this car is ever
+// driven autonomously, clip the right side to match the left (SERVO_MAX 0.5920)
+// or manual and AUTO will steer differently. ROS also keeps its own copy of the
+// centre in stack_master/config/CAR/vehicle_config.yaml
+// (steering_angle_to_servo_offset); change both together.
+#define STR_CENTER     0.3040f // servo position for straight ahead
+#define SERVO_MIN      0.0160f // left travel limit, mechanical
+#define SERVO_MAX      0.7000f // right travel limit, mechanical
+#define STR_RANGE_L    (STR_CENTER - SERVO_MIN)  // 0.2880, stick to the left
+#define STR_RANGE_R    (SERVO_MAX - STR_CENTER)  // 0.3960, stick to the right
 #define THR_MAX        0.60f   // motor current-rel cap at full stick
 #define MAXV_MIN       0.5f    // m/s, dial fully CCW
 #define MAXV_MAX       8.0f    // m/s, dial fully CW

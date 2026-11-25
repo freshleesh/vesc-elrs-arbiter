@@ -17,7 +17,7 @@ git clone --depth 1 --branch release_6_06 https://github.com/vedderb/bldc
 cd bldc
 git apply ../firmware/bldc_arbiter.patch
 cp ../firmware/app_arbiter.c applications/
-make arm_sdk_install     # downloads the pinned toolchain into tools/, no sudo
+make arm_sdk_install     # downloads the pinned toolchain into bldc/tools/, no sudo
 make 60_mk6              # or 60_mk6_hp
 ```
 
@@ -47,7 +47,7 @@ arbiter may not link.
 
 ## Identify the board first
 
-Boards are told apart by UUID, not by USB port. Send a `COMM_FW_VERSION` (id 0)
+Boards are told apart by UUID, not by USB port. [`../tools/fwver.py`](../tools/) sends a `COMM_FW_VERSION` (id 0)
 packet; the reply carries firmware version, hardware name and UUID:
 
 ```
@@ -102,6 +102,10 @@ confirm it is running:
 - `threads` lists a thread named **`RC Arbiter`**
 - `arb` prints state instead of `Invalid command: arb`
 - `COMM_CUSTOM_APP_DATA` packets arrive at ~50 Hz
+
+VESC Tool's CLI has no flag for terminal commands, so use
+[`../tools/vesc_term.py`](../tools/) (or the GUI's terminal) for the first two
+and [`../tools/servo_read.py`](../tools/) for the third.
 
 ### Going back to stock behaviour
 

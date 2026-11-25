@@ -1,5 +1,5 @@
 diff --git a/applications/app.h b/applications/app.h
-index c687645f..7648c5ba 100644
+index c687645..7648c5b 100644
 --- a/applications/app.h
 +++ b/applications/app.h
 @@ -88,4 +88,15 @@ void app_custom_start(void);
@@ -19,7 +19,7 @@ index c687645f..7648c5ba 100644
 +
  #endif /* APP_H_ */
 diff --git a/comm/commands.c b/comm/commands.c
-index 145952dd..dac016a0 100644
+index e69a93a..2201961 100644
 --- a/comm/commands.c
 +++ b/comm/commands.c
 @@ -484,26 +484,38 @@ void commands_process_packet(unsigned char *data, unsigned int len,
@@ -97,7 +97,7 @@ index 145952dd..dac016a0 100644
  	} break;
  
  	case COMM_SET_MCCONF: {
-@@ -1165,8 +1185,11 @@ void commands_process_packet(unsigned char *data, unsigned int len,
+@@ -1181,8 +1201,11 @@ void commands_process_packet(unsigned char *data, unsigned int len,
  
  	case COMM_SET_CURRENT_REL: {
  		int32_t ind = 0;
@@ -112,7 +112,7 @@ index 145952dd..dac016a0 100644
  
  	case COMM_CAN_FWD_FRAME: {
 diff --git a/conf_general.h b/conf_general.h
-index b88334ee..258dc828 100755
+index c1a68c8..3d7388d 100755
 --- a/conf_general.h
 +++ b/conf_general.h
 @@ -82,6 +82,7 @@
